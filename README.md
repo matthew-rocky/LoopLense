@@ -1,245 +1,501 @@
 # LoopLens
 
-LoopLens is a Next.js + FastAPI review workspace for circular charity funding patterns. It helps reviewers inspect loaded records, rank review-priority loops, visualize transfer networks, ask evidence-grounded questions, and generate neutral memos with claim verification.
+<p align="center">
+  <img src="assets/looplens-hero.png" alt="LoopLens hero banner" width="100%" />
+</p>
 
-LoopLens is a triage and evidence-navigation tool. It does not allege wrongdoing, infer intent, or make legal findings.
+<p align="center">
+  <strong>AI-assisted review of circular charity funding patterns</strong>
+</p>
 
-## Primary Architecture
+<p align="center">
+  <a href="https://looplense.onrender.com/"><strong>Live Demo</strong></a>
+  ·
+  <a href="https://looplense.onrender.com/docs"><strong>API Docs</strong></a>
+  ·
+  <a href="https://luma.com/5e83iia8"><strong>Agency 2026 Ottawa</strong></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Frontend-Next.js-black?style=for-the-badge&logo=nextdotjs" alt="Next.js badge" />
+  <img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi" alt="FastAPI badge" />
+  <img src="https://img.shields.io/badge/AI%20Hackathon-Agency%202026-blueviolet?style=for-the-badge" alt="Agency 2026 badge" />
+  <img src="https://img.shields.io/badge/Status-Live-success?style=for-the-badge" alt="Live status badge" />
+</p>
+
+---
+
+## Live Demo
+
+The full backend application is live here:
+
+**https://looplense.onrender.com/**
+
+API documentation:
+
+**https://looplense.onrender.com/docs**
+
+> Note: The app is hosted on Render's free tier, so the first request may take longer if the service has been inactive.
+
+---
+
+## Overview
+
+**LoopLens** is an AI-assisted review platform for exploring circular funding patterns in Canadian charity-transfer data.
+
+The system helps users inspect funding loops such as:
 
 ```text
-frontend/ Next.js App Router UI
-    -> backend/ FastAPI endpoints
-        -> src/ reusable Python data, query, scoring, memo, verification, chat, and graph logic
-            -> data/processed/ local Parquet and CSV files
+Organization A -> Organization B -> Organization C -> Organization A
 ```
 
-The main product is no longer Streamlit. The old Streamlit prototype is preserved under `legacy/` only.
+These circular patterns are **not automatically suspicious**. Many may be structurally normal, including denominational hierarchies, federated charity networks, umbrella organizations, grant redistribution structures, or donation platforms.
 
-## Run The Web App
+LoopLens does **not** make accusations. It helps reviewers understand the structure of a loop, inspect supporting evidence, visualize relationships, generate neutral review memos, and verify whether generated claims are supported by the available data.
 
-Prerequisites:
+---
 
-- Python with the project dependencies installed
-- Node.js LTS
-- npm
-- The FastAPI backend must stay running while the frontend is open
+## Built for Agency 2026 Ottawa
 
-### Backend
+LoopLens was built for **Agency 2026 - Ottawa**, a national AI hackathon hosted by the **Government of Alberta** and focused on practical applications of AI in government delivery, transparency, accountability, and public-sector decision-making.
 
-From the repository root:
+The project was developed for the **Funding Loops** challenge, which asked participants to use CRA T3010 charity data to identify circular funding patterns, including reciprocal gifts, triangular cycles, and longer chains where dollars leave an organization and eventually return to it.
 
-```powershell
-cd D:\AI-Hackathon\Main
-pip install -r requirements.txt
-python -m uvicorn backend.main:app --reload
-```
+Event page: **https://luma.com/5e83iia8**
 
-Backend URLs:
+---
+
+## Problem
+
+Public funding and charitable transfers can move through complex networks. In some cases, funding may travel in circular structures:
 
 ```text
-http://localhost:8000/api/health
-http://127.0.0.1:8000/docs
+Charity A gives to Charity B
+Charity B gives to Charity C
+Charity C gives back to Charity A
 ```
+
+The challenge is not simply finding these loops. The harder challenge is helping reviewers understand:
+
+- which organizations are involved,
+- how money moved between them,
+- when the transfers occurred,
+- whether the pattern appears structurally normal,
+- which loops may deserve closer human review, and
+- what evidence supports any generated explanation.
+
+LoopLens combines data processing, network visualization, AI-style review assistance, memo generation, and claim verification in one interface.
+
+---
+
+## What LoopLens Does
+
+LoopLens helps users:
+
+- detect circular funding patterns,
+- identify the organizations involved in each loop,
+- inspect transfer relationships between participants,
+- visualize loops as interactive networks,
+- rank loops by review priority,
+- generate neutral review memos,
+- ask natural-language questions about the data,
+- verify whether generated claims are supported, and
+- explore charts, tables, and high-priority patterns.
+
+---
+
+## Screenshots
+
+Add your screenshots inside an `assets/` folder using the filenames below.
+
+### Dashboard
+
+<p align="center">
+  <img src="assets/dashboard.png" alt="LoopLens dashboard" width="100%" />
+</p>
+
+### Loop Explorer
+
+<p align="center">
+  <img src="assets/loop-explorer.png" alt="Loop Explorer" width="100%" />
+</p>
+
+### Network View
+
+<p align="center">
+  <img src="assets/network-view.png" alt="Network View" width="100%" />
+</p>
+
+### Ask LoopLens
+
+<p align="center">
+  <img src="assets/chat.png" alt="LoopLens chat interface" width="100%" />
+</p>
+
+### Memo and Verification Workspace
+
+<p align="center">
+  <img src="assets/memo-verification.png" alt="Memo and verification workspace" width="100%" />
+</p>
+
+---
+
+## Main Features
+
+### Modern AI Review Dashboard
+
+The dashboard provides a high-level view of review-priority patterns and funding-loop metrics.
+
+It includes:
+
+- animated metric cards,
+- review label distribution,
+- circular flow summaries,
+- top loops by score and flow,
+- charts for quick exploration, and
+- live backend-powered data loading.
+
+### Loop Explorer
+
+The Loop Explorer provides a full-screen responsive table for exploring circular patterns.
+
+Users can:
+
+- search by loop ID,
+- search by organization name,
+- search by BN / registration number,
+- filter by review label,
+- sort by score, circular flow, and participant count,
+- open detailed loop views, and
+- jump directly to network visualization.
+
+### Advanced Network Visualization
+
+The Network View turns circular funding patterns into an interactive graph.
+
+It supports:
+
+- organization nodes,
+- directional transfer edges,
+- transfer amounts,
+- year ranges,
+- circular-path highlighting,
+- zoom and pan controls,
+- node and edge inspection,
+- organization names and BN metadata, and
+- animated investigation-style graph views.
+
+### Ask LoopLens
+
+LoopLens includes a chat-style interface for asking questions about the loaded data.
+
+Example questions:
+
+```text
+Why was this loop flagged?
+Which organizations are involved in this loop?
+Which loop has the largest circular flow?
+Show the highest-priority circular patterns.
+Generate a neutral review memo for this loop.
+```
+
+The chatbot is designed to answer based on available project data and supporting evidence.
+
+### Memo Generator
+
+LoopLens can generate neutral review memos for selected loops.
+
+The memo generator focuses on:
+
+- organizations involved,
+- transfer relationships,
+- available evidence,
+- review-priority rationale,
+- careful wording, and
+- human-review recommendations.
+
+### Verification Layer
+
+The verification module checks generated outputs for:
+
+- unsupported claims,
+- risky wording,
+- overstated conclusions,
+- missing evidence, and
+- claim-level support status.
+
+This helps keep AI-generated summaries cautious, transparent, and review-focused.
+
+---
+
+## Responsible Use
+
+LoopLens is a review-support prototype. It does **not** determine fraud, misconduct, corruption, or wrongdoing.
+
+A high review-priority score means only that a pattern may deserve closer human review based on the available data. It is not a legal, financial, investigative, or compliance conclusion.
+
+Recommended language:
+
+```text
+review priority
+pattern requiring human review
+circular funding pattern
+available records suggest
+evidence-based summary
+not a finding of wrongdoing
+```
+
+Avoid unsupported language such as:
+
+```text
+fraud
+corruption
+money laundering
+guilty
+criminal
+scam
+fake charity
+```
+
+---
+
+## Tech Stack
 
 ### Frontend
 
-In a second terminal:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Modern animated UI components
+- Interactive charts
+- Advanced network visualization
+- Dark/light mode support
 
-```powershell
-cd D:\AI-Hackathon\Main\frontend
-npm install
-npm run dev
-```
+### Backend
 
-Frontend URL:
+- FastAPI
+- Python
+- JSONL data processing
+- CRA T3010-derived processed data
+- Evidence-grounded query logic
+- Memo generation
+- Claim verification
+- Chat and review-support services
 
-```text
-http://localhost:3000
-```
+### Deployment
 
-If needed, create `frontend/.env.local`:
+- Render Web Service
+- One-service deployment
+- FastAPI serves both:
+  - `/api/*` backend routes
+  - exported Next.js frontend from `frontend/out`
 
-```text
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
-```
-
-### Windows Helper
-
-`RUN.bat` starts the FastAPI backend and prints the frontend commands to run in a second terminal.
-
-## API Endpoints
-
-```text
-GET  /api/health
-GET  /api/summary
-GET  /api/loops
-GET  /api/loops/{loop_id}
-GET  /api/loops/{loop_id}/network
-POST /api/chat
-POST /api/memo
-POST /api/verify
-```
+---
 
 ## Project Structure
 
 ```text
-backend/
-  main.py
-  schemas.py
-  api/
-    health.py
-    loops.py
-    chat.py
-    memo.py
-    verify.py
-  services/
-    loop_service.py
-    graph_service.py
-    chat_service.py
-    memo_service.py
-    verify_service.py
-
-frontend/
-  app/
-    page.tsx
-    dashboard/page.tsx
-    loops/page.tsx
-    loops/detail/page.tsx
-    network/page.tsx
-    chat/page.tsx
-    memo/page.tsx
-  components/
-  lib/
-  package.json
-
-src/
-  data.py
-  load.py
-  query.py
-  score.py
-  memo.py
-  verify.py
-  chat.py
-  graph.py
-  text.py
-
-legacy/
-  app.py
-  chat.py
-  charts.py
-  graph.py
-  ui.py
-
-data/processed/
-  loops_ranked.parquet
-  loop_edges.parquet
-  people.parquet
-  charity_profiles.parquet
+LoopLense/
+|
+|-- backend/
+|   |-- main.py
+|   |-- api/
+|   |-- services/
+|   `-- schemas.py
+|
+|-- frontend/
+|   |-- app/
+|   |-- components/
+|   |-- lib/
+|   |-- public/
+|   `-- package.json
+|
+|-- src/
+|   |-- load.py
+|   |-- query.py
+|   |-- score.py
+|   |-- graph.py
+|   |-- memo.py
+|   |-- verify.py
+|   `-- chat.py
+|
+|-- cra/
+|   |-- loops.jsonl
+|   |-- loop_participants.jsonl
+|   |-- loop_edges.jsonl
+|   `-- identification_name_history.jsonl
+|
+|-- scripts/
+|   `-- build_render.sh
+|
+|-- requirements.txt
+|-- render.yaml
+`-- README.md
 ```
 
-## Backend Logic
+---
 
-The FastAPI backend reuses the pure modules in `src/`:
+## Local Development
 
-- `src/load.py` loads processed loop, edge, people, and profile data.
-- `src/query.py` provides safe DuckDB query helpers.
-- `src/score.py` computes deterministic review-priority labels and explanations.
-- `src/graph.py` provides transfer edge normalization.
-- `src/chat.py` contains evidence-grounded chat handlers without UI dependencies.
-- `src/memo.py` generates neutral evidence-based memos.
-- `src/verify.py` verifies chat and memo claims against attached evidence.
-
-Backend request handling does not import Streamlit UI code.
-
-## Frontend Pages
-
-- Landing page: product entry point and responsible-use framing.
-- Dashboard: animated metrics, review label distribution, top flow chart, score histogram, participant distribution, year-range chart, and high-priority loop cards.
-- Loop Explorer: full-screen searchable/filterable/sortable loop table with sticky headers and participant-name previews.
-- Loop Detail: selected loop summary, participants, edges, and score explanation.
-- Network View: full-height interactive React Flow graph from `/api/loops/{loop_id}/network`.
-- Chat: evidence-grounded chat using `/api/chat`, with evidence cards, tables, charts, memo rendering, and verification cards.
-- Memo: memo generation and verification using `/api/memo` and `/api/verify`, with copy and markdown download.
-
-## Data
-
-The app expects processed files under:
-
-```text
-data/processed/
-```
-
-If processed data is missing, rebuild it with:
+### 1. Clone the repository
 
 ```bash
-python scripts/build_data.py
+git clone https://github.com/matthew-rocky/LoopLense.git
+cd LoopLense
 ```
 
-## Validation
-
-Run backend checks from the repository root:
+### 2. Install Python dependencies
 
 ```bash
-python -m compileall backend src
-pytest tests/test_backend_smoke.py
+pip install -r requirements.txt
 ```
 
-The smoke tests verify:
+### 3. Install frontend dependencies
 
-- `/api/health`
-- `/api/summary`
-- `/api/loops`
-- `/api/loops/{loop_id}/network`
+```bash
+cd frontend
+npm install
+cd ..
+```
 
-## Render One-Service Deployment
+### 4. Build the frontend
 
-Public app:
+```bash
+cd frontend
+npm run build
+cd ..
+```
+
+### 5. Start the full app
+
+```bash
+python -m uvicorn backend.main:app --reload
+```
+
+Open:
 
 ```text
-https://looplense.onrender.com/
+http://127.0.0.1:8000/
 ```
 
 API docs:
 
 ```text
-https://looplense.onrender.com/docs
+http://127.0.0.1:8000/docs
 ```
 
-Render Build Command:
+---
+
+## Render Deployment
+
+This project is deployed as a single Render Web Service.
+
+### Build Command
 
 ```bash
 pip install -r requirements.txt && bash scripts/build_render.sh
 ```
 
-Render Start Command:
+### Start Command
 
 ```bash
 python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
 ```
 
-Deploy LoopLens as one Render Web Service. The frontend is built with Next.js static export into `frontend/out`; FastAPI serves that directory for `/`, `/dashboard`, `/loops`, `/network`, `/chat`, `/memo`, and static assets under `/_next/*`. FastAPI also continues to serve backend routes under `/api/*` and API docs at `/docs`.
+### Public URLs
 
-The free Render service may sleep after inactivity, so the first load can be slow while the service wakes up.
+App:
 
-## Legacy Streamlit Prototype
-
-The old Streamlit prototype is preserved in `legacy/` for reference only. It is not the main application path and Streamlit is not included in `requirements.txt`.
-
-If you intentionally need the legacy prototype, install:
-
-```bash
-pip install -r requirements-legacy-streamlit.txt
+```text
+https://looplense.onrender.com/
 ```
 
-## Responsible Use
+API Docs:
 
-Use LoopLens for review priority, evidence exploration, and human review workflows. Use wording such as:
+```text
+https://looplense.onrender.com/docs
+```
 
-- review priority
-- pattern requiring human review
-- circular funding pattern
-- evidence-based summary
-- available records suggest
-- not a finding of wrongdoing
+---
 
-Avoid using the app to claim fraud, criminality, guilt, corruption, money laundering, fake charities, or proof of wrongdoing.
+## Dataset Notes
+
+LoopLens uses processed CRA charity-transfer data for circular funding analysis.
+
+The repository includes only the smaller files required for the demo/runtime experience. Large raw CRA files are intentionally excluded from Git tracking to keep the repository lightweight and compatible with GitHub file-size limits.
+
+Included demo/runtime files may include:
+
+```text
+cra/loops.jsonl
+cra/loop_participants.jsonl
+cra/loop_edges.jsonl
+cra/identification_name_history.jsonl
+```
+
+Large raw files are kept out of the repository using `.gitignore`.
+
+---
+
+## Example Workflow
+
+1. Open the live demo.
+2. Review the dashboard summary.
+3. Go to the Loop Explorer.
+4. Select a loop with multiple participants.
+5. Open the Network View.
+6. Inspect organizations, transfer edges, years, and amounts.
+7. Ask LoopLens a question about the selected loop.
+8. Generate a neutral memo.
+9. Run verification to check claim support.
+
+---
+
+## Team and Event Context
+
+LoopLens was developed as a hackathon prototype exploring how AI systems can support public-interest review workflows.
+
+The project reflects Agency 2026 Ottawa's broader goal of using AI, data science, and interactive tools to improve transparency, insight, and accountability in government-related spending and public-sector decision-making.
+
+---
+
+## Author
+
+**Matthew Rocky**  
+M.S. Systems Science & Engineering, Interdisciplinary AI  
+University of Ottawa
+
+LinkedIn: https://www.linkedin.com/in/matthew-rocky/  
+GitHub: https://github.com/matthew-rocky
+
+
+**Ayesha Khalil**
+
+LinkedIn: https://www.linkedin.com/in/ayeshakhalil/
+
+
+**Kenneth J. Preston**
+
+LinkedIn: https://www.linkedin.com/in/kennethjpreston/
+
+
+**Daniel Demoz**
+
+LinkedIn: https://www.linkedin.com/in/daniel-s-demoz/
+
+
+---
+
+## Disclaimer
+
+This project is a prototype for educational, portfolio, and demonstration purposes.
+
+LoopLens does not make legal, financial, investigative, or compliance determinations. All outputs should be interpreted as review-support signals that require human judgment and additional verification.
+
+---
+
+## License
+
+This project is intended for educational and portfolio demonstration purposes.
+
