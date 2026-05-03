@@ -497,5 +497,9 @@ LoopLens does not make legal, financial, investigative, or compliance determinat
 
 ## License
 
-This project is intended for educational and portfolio demonstration purposes.
+This project is intended for educational, portfolio, and demonstration purposes.
+
+## Acknowledgment
+
+This project was developed for AI Hackathon 2026, hosted by the Government of Alberta.
 
