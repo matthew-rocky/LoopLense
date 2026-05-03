@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #eef3f8;
+  --background-2: #dce7f0;
+  --foreground: #0e1726;
+  --muted: #607086;
+  --border: rgba(15, 23, 42, 0.14);
+  --surface: rgba(255, 255, 255, 0.74);
+  --surface-strong: rgba(255, 255, 255, 0.92);
+  --surface-muted: rgba(15, 23, 42, 0.055);
+  --accent: #0f766e;
+  --accent-2: #2563eb;
+  --accent-foreground: #ecfeff;
+  --warning: #b45309;
+  --success: #0f766e;
+  --danger: #b91c1c;
+  --shadow: 0 22px 80px rgba(15, 23, 42, 0.13);
+}
+
+:root[data-theme="dark"] {
+  --background: #05070d;
+  --background-2: #0a101c;
+  --foreground: #eef7f3;
+  --muted: #94a3b8;
+  --border: rgba(226, 232, 240, 0.14);
+  --surface: rgba(15, 23, 42, 0.70);
+  --surface-strong: rgba(15, 23, 42, 0.88);
+  --surface-muted: rgba(255, 255, 255, 0.06);
+  --accent: #2dd4bf;
+  --accent-2: #60a5fa;
+  --accent-foreground: #082f2c;
+  --warning: #fbbf24;
+  --success: #34d399;
+  --danger: #f87171;
+  --shadow: 0 24px 90px rgba(0, 0, 0, 0.34);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 30rem),
+    radial-gradient(circle at 88% 4%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 28rem),
+    linear-gradient(180deg, var(--background) 0%, var(--background-2) 100%);
+  color: var(--foreground);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--muted) 15%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--muted) 15%, transparent) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 84%);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glass {
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--surface) 74%, transparent));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+}
+
+.panel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  backdrop-filter: blur(18px);
+}
+
+.soft-ring {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 40%, transparent) transparent;
+}
+
+.react-flow {
+  background: transparent;
+}
+
+.react-flow__node {
+  background: transparent;
+  border: 0;
+  color: var(--foreground);
+  padding: 0;
+}
+
+.react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.react-flow__edge-text {
+  fill: var(--foreground);
+  font-size: 11px;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.react-flow__controls button {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@media (max-width: 767px) {
+  body::before {
+    background-size: 34px 34px;
+  }
+}
