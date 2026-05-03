@@ -104,7 +104,7 @@ frontend/
     page.tsx
     dashboard/page.tsx
     loops/page.tsx
-    loops/[id]/page.tsx
+    loops/detail/page.tsx
     network/page.tsx
     chat/page.tsx
     memo/page.tsx
@@ -190,6 +190,36 @@ The smoke tests verify:
 - `/api/summary`
 - `/api/loops`
 - `/api/loops/{loop_id}/network`
+
+## Render One-Service Deployment
+
+Public app:
+
+```text
+https://looplense.onrender.com/
+```
+
+API docs:
+
+```text
+https://looplense.onrender.com/docs
+```
+
+Render Build Command:
+
+```bash
+pip install -r requirements.txt && bash scripts/build_render.sh
+```
+
+Render Start Command:
+
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+Deploy LoopLens as one Render Web Service. The frontend is built with Next.js static export into `frontend/out`; FastAPI serves that directory for `/`, `/dashboard`, `/loops`, `/network`, `/chat`, `/memo`, and static assets under `/_next/*`. FastAPI also continues to serve backend routes under `/api/*` and API docs at `/docs`.
+
+The free Render service may sleep after inactivity, so the first load can be slow while the service wakes up.
 
 ## Legacy Streamlit Prototype
 

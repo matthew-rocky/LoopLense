@@ -106,7 +106,7 @@ export function LoopsTable({ rows }: { rows: AnyRow[] }) {
             {visible.map((row) => (
               <tr key={loopId(row)} className="group transition hover:bg-[var(--surface-muted)]">
                 <td className="px-4 py-4 font-semibold text-[var(--accent)]">
-                  <Link href={`/loops/${encodeURIComponent(loopId(row))}`}>Loop {loopId(row)}</Link>
+                  <Link href={`/loops/detail?loop=${encodeURIComponent(loopId(row))}`}>Loop {loopId(row)}</Link>
                 </td>
                 <td className="px-4 py-4"><Badge label={row.review_label ?? row.label} /></td>
                 <td className="px-4 py-4">{score(row.review_score ?? row.score)}</td>
@@ -130,7 +130,7 @@ export function LoopsTable({ rows }: { rows: AnyRow[] }) {
                 <td className="max-w-lg px-4 py-4 text-[var(--muted)]"><span className="line-clamp-3">{text(row.why_flagged)}</span></td>
                 <td className="px-4 py-4">
                   <div className="flex gap-2">
-                    <Action href={`/loops/${encodeURIComponent(loopId(row))}`} title="View details" icon={ExternalLink} />
+                    <Action href={`/loops/detail?loop=${encodeURIComponent(loopId(row))}`} title="View details" icon={ExternalLink} />
                     <Action href={`/network?loop=${encodeURIComponent(loopId(row))}`} title="Open network" icon={Network} />
                     <Action href={`/chat?loop=${encodeURIComponent(loopId(row))}`} title="Ask about this loop" icon={Bot} />
                   </div>

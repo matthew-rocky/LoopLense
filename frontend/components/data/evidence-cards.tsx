@@ -27,7 +27,9 @@ export function EvidenceCards({ rows }: { rows?: AnyRow[] }) {
             {row.review_score !== undefined && <Metric label="Score" value={score(row.review_score)} />}
             {(row.total_flow !== undefined || row.circular_flow !== undefined) && <Metric label="Flow" value={money(row.circular_flow ?? row.total_flow)} />}
             {row.participant_count !== undefined && <Metric label="Participants" value={text(row.participant_count)} />}
-            {(row.city || row.province) && <Metric label="Location" value={<span className="inline-flex items-center gap-1"><MapPin size={12} />{[row.city, row.province].filter(Boolean).join(", ")}</span>} />}
+            {(row.city !== undefined || row.province !== undefined) && (
+              <Metric label="Location" value={<span className="inline-flex items-center gap-1"><MapPin size={12} />{[row.city, row.province].filter(Boolean).map(String).join(", ")}</span>} />
+            )}
           </div>
         </article>
       ))}

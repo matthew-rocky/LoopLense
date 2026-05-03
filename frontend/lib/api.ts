@@ -1,6 +1,12 @@
 import type { AnyRow, ChatResponse, LoopDetail, MemoResponse, NetworkGraph, Summary } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+function apiBase() {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "");
+  if (!configured) return "/api";
+  return configured.endsWith("/api") ? configured : `${configured}/api`;
+}
+
+const API_BASE = apiBase();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -57,4 +63,3 @@ export function postVerify(loop_id: string, memo: string | Record<string, unknow
     body: JSON.stringify({ loop_id, memo })
   });
 }
-

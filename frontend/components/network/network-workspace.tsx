@@ -288,7 +288,7 @@ function Actions({ loopId, org }: { loopId: string; org?: string }) {
         <FileText size={15} />
         Generate memo
       </a>
-      <a href={`/loops/${encodeURIComponent(loopId)}`} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold hover:bg-[var(--surface)]">
+      <a href={`/loops/detail?loop=${encodeURIComponent(loopId)}`} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold hover:bg-[var(--surface)]">
         <ExternalLink size={15} />
         View loop details
       </a>

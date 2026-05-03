@@ -22,7 +22,7 @@ export function MemoDocument({ memo, disclaimer }: { memo?: AnyRow | null; discl
           </ul>
         </>
       )}
-      {memo.rationale && (
+      {memo.rationale !== undefined && memo.rationale !== null && (
         <>
           <h3 className="mt-6 font-semibold">Rationale</h3>
           <p className="mt-2 text-sm text-[var(--muted)]">{text(memo.rationale)}</p>
