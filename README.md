@@ -100,9 +100,7 @@ LoopLens helps users:
 
 ---
 
-## Screenshots
-
-Add your screenshots inside an `assets/` folder using the filenames below.
+## Screenshots 
 
 ### Dashboard
 
