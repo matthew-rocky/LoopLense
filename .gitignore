@@ -61,6 +61,8 @@ cra/cra_identification.jsonl
 cra/cra_charitable_programs.jsonl
 cra/overhead_by_charity.jsonl
 cra/donee_name_quality.jsonl
+cra/cra_compensation.jsonl
+cra/cra_foundation_info.jsonl
 
 # Optional: prevent accidental large raw CRA uploads
 cra/*.parquet
