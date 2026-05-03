@@ -13,6 +13,9 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     intent: str
+    selected_loop_id: str | None = None
+    loop: dict[str, Any] | None = None
+    participants: list[dict[str, Any]] = []
     data: list[dict[str, Any]] = []
     evidence: list[dict[str, Any]] = []
     suggested_followups: list[str] = []

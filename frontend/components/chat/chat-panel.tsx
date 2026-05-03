@@ -50,7 +50,7 @@ export function ChatPanel({ selectedLoopId }: { selectedLoopId?: string }) {
     setMessage("");
     try {
       const response = await postChat(prompt, activeLoopId);
-      const returnedLoopId = firstLoopId(response.data);
+      const returnedLoopId = response.selected_loop_id ?? firstLoopId(response.data);
       if (returnedLoopId) setActiveLoopId(returnedLoopId);
       setMessages((current) => [
         ...current,
@@ -176,14 +176,17 @@ function Avatar({ icon: Icon }: { icon: ComponentType<{ size?: number }> }) {
 
 function AssistantResponse({ response, onAsk }: { response: ChatResponse & { memo?: AnyRow; memo_verification?: AnyRow }; onAsk: (text: string) => void }) {
   const unsupported = response.intent === "unsupported";
-  const oneLoop = response.data.length === 1 && firstLoopId(response.data);
+  const loopRow = response.loop ?? (response.data.length === 1 ? response.data[0] : undefined);
+  const orgRows = organizationRows(response);
   return (
     <>
-      {!unsupported && oneLoop ? <LoopSummaryCard row={response.data[0]} /> : null}
-      {!unsupported && oneLoop ? <QuickActions onAsk={onAsk} /> : null}
+      {!unsupported && loopRow ? <LoopSummaryCard row={loopRow} /> : null}
+      {!unsupported && orgRows.length ? <OrganizationDetailsCard rows={orgRows} /> : null}
       {!unsupported && <ChartRenderer chart={response.chart} rows={response.data} />}
       {!unsupported && response.memo ? <MemoDocument memo={response.memo} /> : null}
-      {!unsupported && <EvidenceCards rows={response.evidence} />}
+      {!unsupported && !orgRows.length && <EvidenceCards rows={response.evidence} />}
+      {!unsupported ? <QuickActions onAsk={onAsk} /> : null}
+      <FollowupChips followups={response.suggested_followups} onAsk={onAsk} />
       {!unsupported && response.data.length ? (
         <details className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
           <summary className="cursor-pointer text-sm font-semibold">View returned records</summary>
@@ -191,7 +194,6 @@ function AssistantResponse({ response, onAsk }: { response: ChatResponse & { mem
         </details>
       ) : null}
       {!unsupported && <VerificationCards verification={response.memo_verification ?? response.verification} />}
-      <FollowupChips followups={response.suggested_followups} onAsk={onAsk} />
       {!unsupported && process.env.NODE_ENV !== "production" && (
         <details className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--muted)]">
           <summary className="cursor-pointer font-semibold">Show raw response</summary>
@@ -200,6 +202,18 @@ function AssistantResponse({ response, onAsk }: { response: ChatResponse & { mem
       )}
     </>
   );
+}
+
+function organizationRows(response: ChatResponse) {
+  const rows = response.participants?.length ? response.participants : response.evidence ?? [];
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = text(row.bn ?? row.BN ?? row.business_number ?? row.registration_number ?? row.name ?? row.legal_name ?? row.organization_name);
+    const isOrganization = Boolean(row.name ?? row.organization_name ?? row.legal_name ?? row.charity_name ?? row.account_name ?? row.bn ?? row.business_number);
+    if (!isOrganization || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function LoopSummaryCard({ row }: { row: AnyRow }) {
@@ -231,12 +245,74 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function OrganizationDetailsCard({ rows }: { rows: AnyRow[] }) {
+  return (
+    <section className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs uppercase text-[var(--muted)]">Loop participants</div>
+          <h3 className="mt-1 text-lg font-semibold">Organization details</h3>
+        </div>
+        <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">{rows.length} entities</div>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {rows.slice(0, 6).map((row, index) => (
+          <article key={index} className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+            <div className="text-sm font-semibold">{participantTitle(row)}</div>
+            <div className="mt-1 text-xs text-[var(--muted)]">{text(row.bn ?? row.BN ?? row.business_number ?? row.registration_number ?? row.entity_id ?? "No identifier shown")}</div>
+            <div className="mt-3 grid gap-2 text-xs">
+              <DetailLine label="Role" value={entityRole(row)} />
+              {(row.total_sent !== undefined || row.sent_amount !== undefined) && <DetailLine label="Total sent" value={money(row.total_sent ?? row.sent_amount)} />}
+              {(row.total_received !== undefined || row.received_amount !== undefined) && <DetailLine label="Total received" value={money(row.total_received ?? row.received_amount)} />}
+              {(row.max_govt_share_pct !== undefined || row.loop_max_govt_share_pct !== undefined) && <DetailLine label="Government funding share" value={percent(row.max_govt_share_pct ?? row.loop_max_govt_share_pct)} />}
+              {(row.max_strict_overhead_pct !== undefined || row.loop_max_strict_overhead_pct !== undefined) && <DetailLine label="Overhead indicator" value={percent(row.max_strict_overhead_pct ?? row.loop_max_strict_overhead_pct)} />}
+              {(row.review_score !== undefined || row.score !== undefined) && <DetailLine label="Review score" value={score(row.review_score ?? row.score)} />}
+              {(row.city !== undefined || row.province !== undefined) && <DetailLine label="Location" value={[row.city, row.province].filter(Boolean).map(String).join(", ")} />}
+              {(row.designation !== undefined || row.status !== undefined || row.filing_status !== undefined) && <DetailLine label="Notes" value={text(row.designation ?? row.status ?? row.filing_status)} />}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function participantTitle(row: AnyRow) {
+  return text(row.organization_name ?? row.legal_name ?? row.account_name ?? row.name ?? row.charity ?? row.charity_name ?? row.bn ?? row.BN ?? row.business_number ?? "Unknown organization");
+}
+
+function entityRole(row: AnyRow) {
+  const sendsTo = row.sends_to ?? row.target_name ?? row.to_name;
+  const receivesFrom = row.receives_from ?? row.source_name ?? row.from_name;
+  if (sendsTo && receivesFrom) return `Sends to ${text(sendsTo)} and receives from ${text(receivesFrom)}`;
+  if (sendsTo) return `Sends to ${text(sendsTo)}`;
+  if (receivesFrom) return `Receives from ${text(receivesFrom)}`;
+  return text(row.participant_role ?? row.role ?? row.position_in_loop ?? "Participant in the circular path");
+}
+
+function percent(value: unknown) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "n/a";
+  if (n >= 0 && n <= 1) return `${(n * 100).toFixed(1)}%`;
+  if (n > 1 && n <= 100) return `${n.toFixed(1)}%`;
+  return `${n.toFixed(2)} ratio indicator`;
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2 rounded-md bg-[var(--surface)] px-2 py-1.5">
+      <span className="shrink-0 text-[var(--muted)]">{label}:</span>
+      <span className="min-w-0 break-words font-medium">{value}</span>
+    </div>
+  );
+}
+
 function QuickActions({ onAsk }: { onAsk: (text: string) => void }) {
   const actions = [
+    { label: "Show organization details", prompt: "Show organization details", icon: Users },
     { label: "Why flagged?", prompt: "Why was this loop flagged?", icon: AlertCircle },
-    { label: "Show participants", prompt: "Show participants", icon: Users },
-    { label: "Show network", prompt: "Show network", icon: GitBranch },
-    { label: "Generate memo", prompt: "Generate a neutral memo for this loop.", icon: FileText }
+    { label: "Show network view", prompt: "Show network view", icon: GitBranch },
+    { label: "Generate neutral memo", prompt: "Generate neutral memo", icon: FileText }
   ];
   return (
     <div className="mt-3 flex flex-wrap gap-2">

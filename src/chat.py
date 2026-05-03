@@ -12,6 +12,15 @@ from src.query import run
 from src.text import clean
 from src.verify import build_memo, verify_chat_answer, verify_memo
 
+try:
+    from backend.services.name_service import get_display_name, get_identity_metadata
+except ImportError:  # Keep src usable outside the FastAPI package context.
+    def get_display_name(bn: str) -> str:
+        return str(bn or "")
+
+    def get_identity_metadata(bn: str) -> dict[str, Any]:
+        return {"bn": str(bn or ""), "name": str(bn or "")}
+
 
 PROMPTS = [
     "Show me the review label distribution.",
@@ -137,11 +146,61 @@ def people_meta(tables: dict[str, TableInfo]) -> tuple[str | None, dict[str, str
     }
 
 
+def sql_literal(value: Any) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 def query(ctx: dict[str, Any], sql: str) -> pd.DataFrame:
     df, err = run(ctx["con"], sql)
     if err:
         raise RuntimeError(err)
     return df
+
+
+def clean_participant_row(row: dict[str, Any]) -> dict[str, Any]:
+    out = dict(row)
+    bn = display_value(out, "bn", "BN", "charity_bn", "business_number")
+    if bn is not None:
+        out["bn"] = str(bn)
+        meta = get_identity_metadata(str(bn))
+        display = get_display_name(str(bn))
+        out["organization_name"] = display or out.get("organization_name") or out.get("name") or str(bn)
+        out["name"] = out.get("name") or out["organization_name"]
+        out["legal_name"] = out.get("legal_name") or meta.get("legal_name")
+        out["account_name"] = out.get("account_name") or meta.get("account_name")
+        out["city"] = out.get("city") or meta.get("city")
+        out["province"] = out.get("province") or meta.get("province")
+        out["category"] = out.get("category") or meta.get("category")
+        out["designation"] = out.get("designation") or meta.get("designation")
+    sends_to_bn = display_value(out, "sends_to_bn", "sends_to", "to_bn", "target_bn", "donee_bn", "dst")
+    receives_from_bn = display_value(out, "receives_from_bn", "receives_from", "from_bn", "source_bn", "donor_bn", "src")
+    if sends_to_bn is not None:
+        out["sends_to_bn"] = str(sends_to_bn)
+        out["sends_to"] = get_display_name(str(sends_to_bn)) or str(sends_to_bn)
+    if receives_from_bn is not None:
+        out["receives_from_bn"] = str(receives_from_bn)
+        out["receives_from"] = get_display_name(str(receives_from_bn)) or str(receives_from_bn)
+    return out
+
+
+def get_loop_participants_for_chat(ctx: dict[str, Any], loop_id: Any) -> list[dict[str, Any]]:
+    if loop_id in (None, ""):
+        return []
+    selected_id = ctx.get("selected_loop_id")
+    if selected_id and str(selected_id) == str(loop_id):
+        people = ctx.get("selected_people") or []
+        if isinstance(people, list) and people:
+            return [clean_participant_row(p) for p in people if isinstance(p, dict)]
+    table, m = people_meta(ctx["tables"])
+    loop_col = m.get("loop_id")
+    if not table or not loop_col:
+        return []
+    sql = f"SELECT * FROM {table} WHERE CAST({qcol(loop_col)} AS VARCHAR) = {sql_literal(loop_id)} ORDER BY {qcol(loop_col)}"
+    try:
+        df = query(ctx, sql)
+    except Exception:
+        return []
+    return [clean_participant_row(row) for row in records(df)]
 
 
 def display_value(row: dict[str, Any], *keys: str) -> Any:
@@ -225,15 +284,10 @@ def entity_role(row: dict[str, Any]) -> str:
 
 def participant_rows_for_loop(row: dict[str, Any], ctx: dict[str, Any]) -> list[dict[str, Any]]:
     loop_id = row_loop_id(row)
-    selected_id = ctx.get("selected_loop_id")
-    if loop_id and selected_id and str(loop_id) == str(selected_id):
-        people = ctx.get("selected_people") or []
-        if isinstance(people, list):
-            return [p for p in people if isinstance(p, dict)]
     participants = row.get("participants")
     if isinstance(participants, list):
-        return [p for p in participants if isinstance(p, dict)]
-    return []
+        return [clean_participant_row(p) for p in participants if isinstance(p, dict)]
+    return get_loop_participants_for_chat(ctx, loop_id)
 
 
 def build_entity_summary(rows: list[dict[str, Any]], limit: int = 6) -> str:
@@ -270,6 +324,14 @@ def build_entity_summary(rows: list[dict[str, Any]], limit: int = 6) -> str:
     return "\n".join(lines)
 
 
+def circular_path_summary(row: dict[str, Any], participants: list[dict[str, Any]]) -> str | None:
+    names = [entity_name(p) for p in participants if entity_name(p) != "Unknown organization"]
+    if len(names) >= 2:
+        return " -> ".join([*names, names[0]])
+    path = display_value(row, "path_display")
+    return str(path) if path else None
+
+
 def summarize_loop(row: dict[str, Any], prefix: str, participants: list[dict[str, Any]] | None = None) -> str:
     loop_id = display_value(row, "loop_id", "id", "cycle_id", "component_id")
     score = number(display_value(row, "review_score", "score"))
@@ -278,7 +340,7 @@ def summarize_loop(row: dict[str, Any], prefix: str, participants: list[dict[str
     participant_count = display_value(row, "participant_count")
     participant_rows = participants or []
     why = display_value(row, "why_flagged")
-    path = display_value(row, "path_display")
+    path = circular_path_summary(row, participant_rows)
     parts = [prefix]
     if loop_id is not None:
         parts.append(f"loop {loop_id}")
@@ -302,7 +364,7 @@ def summarize_loop(row: dict[str, Any], prefix: str, participants: list[dict[str
     if why:
         details.append(f"This loop is worth human review because of {why}.")
     details.append("This does not prove wrongdoing; it only means the loop is worth human review.")
-    return " ".join([sentence, *details])
+    return "\n\n".join([sentence, *details])
 
 
 def answer_label_distribution(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -337,6 +399,9 @@ def answer_top_loops(ctx: dict[str, Any]) -> dict[str, Any]:
         {"type": "bar", "x": m.get("loop_id") or cols[0], "y": m["score"], "title": "Top 10 Loops by Review Score"},
         sql,
         evidence=pd.DataFrame(people) if people else None,
+        selected_loop_id=row_loop_id(row),
+        loop=row or None,
+        participants=people,
         suggested_followups=loop_followups(),
     )
 
@@ -377,6 +442,9 @@ def answer_worst_loop(ctx: dict[str, Any]) -> dict[str, Any]:
         {"type": "table", "title": "Highest-Priority Loop"},
         sql,
         evidence=pd.DataFrame(people) if people else None,
+        selected_loop_id=row_loop_id(row),
+        loop=row or None,
+        participants=people,
         suggested_followups=participant_followups(),
     )
 
@@ -397,6 +465,9 @@ def answer_largest_flow(ctx: dict[str, Any]) -> dict[str, Any]:
         {"type": "table", "title": "Largest Circular Flow"},
         sql,
         evidence=pd.DataFrame(people) if people else None,
+        selected_loop_id=row_loop_id(row),
+        loop=row or None,
+        participants=people,
         suggested_followups=loop_followups(),
     )
 
@@ -480,6 +551,9 @@ def answer_selected_loop_explanation(ctx: dict[str, Any]) -> dict[str, Any]:
         {"type": "table", "title": "Selected Loop Evidence"},
         method,
         evidence=pd.DataFrame(people) if people else evidence,
+        selected_loop_id=row_loop_id(row) or ctx.get("selected_loop_id"),
+        loop=row or None,
+        participants=[clean_participant_row(p) for p in people if isinstance(p, dict)],
         suggested_followups=loop_followups(),
     )
 
@@ -498,6 +572,9 @@ def answer_selected_loop_participants(ctx: dict[str, Any]) -> dict[str, Any]:
         {"type": "table", "title": "Selected Loop Participants"},
         "Participant rows filtered by the selected loop id.",
         evidence=df,
+        selected_loop_id=loop_label,
+        loop=loop or None,
+        participants=people,
         suggested_followups=loop_followups(),
     )
 

@@ -44,6 +44,7 @@ export function NetworkWorkspace({ initialLoopId, initialGraph, loopOptions }: {
     setLoading(true);
     setError("");
     setSelected(null);
+    setPlaying(false);
     try {
       const result = await getNetwork(nextLoop.trim());
       setGraph(result);
@@ -56,17 +57,50 @@ export function NetworkWorkspace({ initialLoopId, initialGraph, loopOptions }: {
     }
   }
 
+  const setManualYear = useCallback((nextYear: number | "all") => {
+    setPlaying(false);
+    setYear(nextYear);
+  }, []);
+
   useEffect(() => {
-    if (!playing || availableYears.length === 0) return;
+    if (availableYears.length <= 1 && playing) {
+      setPlaying(false);
+    }
+  }, [availableYears.length, playing]);
+
+  useEffect(() => {
+    if (!playing || availableYears.length <= 1) return;
     const id = window.setInterval(() => {
       setYear((current) => {
         if (current === "all") return availableYears[0];
         const index = availableYears.indexOf(current);
-        return availableYears[(index + 1) % availableYears.length];
+        const nextIndex = index < 0 ? 0 : index + 1;
+        if (nextIndex >= availableYears.length) {
+          window.clearInterval(id);
+          setPlaying(false);
+          return current;
+        }
+        const nextYear = availableYears[nextIndex];
+        if (nextIndex === availableYears.length - 1) {
+          window.clearInterval(id);
+          setPlaying(false);
+        }
+        return nextYear;
       });
-    }, 1200);
+    }, 1000);
     return () => window.clearInterval(id);
   }, [playing, availableYears]);
+
+  const togglePlaying = useCallback(() => {
+    if (availableYears.length <= 1) return;
+    setPlaying((current) => {
+      if (current) return false;
+      if (year === "all" || availableYears.indexOf(year) === availableYears.length - 1) {
+        setYear(availableYears[0]);
+      }
+      return true;
+    });
+  }, [availableYears, year]);
 
   const handleSelect = useCallback((selection: Selection) => {
     setSelected(selection);
@@ -75,7 +109,7 @@ export function NetworkWorkspace({ initialLoopId, initialGraph, loopOptions }: {
 
   return (
     <div className="flex h-[calc(100vh-9rem)] min-h-[760px] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-      <div className="grid gap-3 border-b border-[var(--border)] bg-[var(--surface-strong)] p-4 xl:grid-cols-[1fr_auto_auto_auto]">
+      <div className="grid gap-3 border-b border-[var(--border)] bg-[var(--surface-strong)] p-4 xl:grid-cols-[1fr_auto_auto]">
         <label className="relative">
           <Search className="absolute left-3 top-3 text-[var(--muted)]" size={17} />
           <input
@@ -92,7 +126,6 @@ export function NetworkWorkspace({ initialLoopId, initialGraph, loopOptions }: {
         <select className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm outline-none focus:focus-ring" value={loop} onChange={(event) => load(event.target.value)}>
           {loopOptions.map((row) => <option key={loopId(row)} value={loopId(row)}>Loop {loopId(row)}</option>)}
         </select>
-        <YearControl year={year} setYear={setYear} years={availableYears} playing={playing} setPlaying={setPlaying} />
         <Button onClick={() => load()} disabled={loading}>
           {loading ? <Loader2 className="animate-spin" size={16} /> : <Network size={16} />}
           Load
@@ -113,7 +146,10 @@ export function NetworkWorkspace({ initialLoopId, initialGraph, loopOptions }: {
             </div>
           )}
           {graph && graph.nodes.length > 0 ? (
-            <NetworkGraphView graph={graph} year={year} selected={selected} onSelect={handleSelect} focusMode={focusMode} onToggleFocus={() => setFocusMode((value) => !value)} />
+            <>
+              <NetworkGraphView graph={graph} year={year} selected={selected} onSelect={handleSelect} focusMode={focusMode} onToggleFocus={() => setFocusMode((value) => !value)} />
+              <YearControl year={year} setYear={setManualYear} years={availableYears} playing={playing} onTogglePlay={togglePlaying} />
+            </>
           ) : (
             <EmptyState icon={Network} title="No network selected" description="Select a loop to inspect the circular transfer path with organization names and BN metadata." />
           )}
@@ -146,31 +182,54 @@ export function NetworkWorkspace({ initialLoopId, initialGraph, loopOptions }: {
   );
 }
 
-function YearControl({ year, setYear, years, playing, setPlaying }: { year: number | "all"; setYear: (year: number | "all") => void; years: number[]; playing: boolean; setPlaying: (playing: boolean) => void }) {
+function YearControl({ year, setYear, years, playing, onTogglePlay }: { year: number | "all"; setYear: (year: number | "all") => void; years: number[]; playing: boolean; onTogglePlay: () => void }) {
   if (years.length === 0) {
-    return <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--muted)]">No year data</div>;
+    return (
+      <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-full border border-[var(--border)] bg-[var(--surface-strong)]/88 px-4 py-2 text-sm text-[var(--muted)] shadow-glow backdrop-blur">
+        No year data
+      </div>
+    );
   }
+  const selectedIndex = year === "all" ? 0 : Math.max(1, years.indexOf(year) + 1);
+  const playDisabled = years.length <= 1;
   return (
-    <div className="flex min-w-[260px] items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-2">
-      <button className="rounded-md p-1.5 text-[var(--accent)] hover:bg-[var(--surface)]" onClick={() => setPlaying(!playing)} title={playing ? "Pause year animation" : "Animate years"}>
-        {playing ? <Pause size={15} /> : <Play size={15} />}
+    <div className="pointer-events-auto absolute bottom-5 left-1/2 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-strong)]/88 px-3 py-2.5 shadow-glow backdrop-blur md:flex-nowrap md:px-4">
+      <button
+        className="grid h-9 w-9 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--accent)] transition hover:bg-[var(--surface)] disabled:cursor-not-allowed disabled:opacity-45"
+        onClick={onTogglePlay}
+        disabled={playDisabled}
+        title={playing ? "Pause yearly transfer animation" : "Play yearly transfer animation"}
+      >
+        {playing ? <Pause size={16} /> : <Play size={16} />}
       </button>
-      <select className="bg-transparent text-sm outline-none" value={year} onChange={(event) => setYear(event.target.value === "all" ? "all" : Number(event.target.value))}>
+      <select
+        className="min-w-28 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-sm font-semibold outline-none focus:focus-ring"
+        value={year}
+        onChange={(event) => setYear(event.target.value === "all" ? "all" : Number(event.target.value))}
+        title="Select all years or a specific year"
+      >
         <option value="all">All years</option>
         {years.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
-      <input
-        className="w-24 accent-[var(--accent)]"
-        type="range"
-        min={0}
-        max={years.length}
-        value={year === "all" ? 0 : Math.max(1, years.indexOf(year) + 1)}
-        onChange={(event) => {
-          const index = Number(event.target.value);
-          setYear(index === 0 ? "all" : years[index - 1]);
-        }}
-        title="Filter graph by year"
-      />
+      <div className="flex min-w-[220px] flex-1 items-center gap-2 md:min-w-[300px]">
+        <span className="text-xs font-semibold text-[var(--muted)]">{years[0]}</span>
+        <input
+          className="min-w-36 flex-1 accent-[var(--accent)]"
+          type="range"
+          min={0}
+          max={years.length}
+          value={selectedIndex}
+          onChange={(event) => {
+            const index = Number(event.target.value);
+            setYear(index === 0 ? "all" : years[index - 1]);
+          }}
+          title="Filter graph by year"
+        />
+        <span className="text-xs font-semibold text-[var(--muted)]">{years[years.length - 1]}</span>
+      </div>
+      <div className="min-w-16 rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-1.5 text-center text-sm font-semibold">
+        {year === "all" ? "All years" : year}
+      </div>
     </div>
   );
 }

@@ -69,6 +69,9 @@ export type NetworkGraph = {
 export type ChatResponse = {
   answer: string;
   intent: string;
+  selected_loop_id?: string;
+  loop?: AnyRow;
+  participants?: AnyRow[];
   data: AnyRow[];
   evidence: AnyRow[];
   suggested_followups: string[];

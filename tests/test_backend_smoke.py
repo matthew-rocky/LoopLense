@@ -86,8 +86,37 @@ def test_chat_worst_loop_returns_grounded_loop() -> None:
     assert data["intent"] in {"worst_loop", "top_loops"}
     assert data["intent"] != "unsupported"
     assert "loop" in data["answer"].lower() or "review score" in data["answer"].lower()
+    assert "organizations" in data["answer"].lower() or "entities" in data["answer"].lower()
+    assert "{" not in data["answer"]
+    assert "}" not in data["answer"]
+    assert "['" not in data["answer"]
+    assert data.get("selected_loop_id")
+    assert data.get("participants")
+    assert len(data["participants"]) > 0
+    assert any(
+        row.get("organization_name") or row.get("legal_name") or row.get("account_name") or row.get("name") or row.get("bn")
+        for row in data["participants"]
+    )
+    assert any(
+        str(row.get("organization_name") or row.get("legal_name") or row.get("account_name") or row.get("name") or row.get("bn")) in data["answer"]
+        for row in data["participants"]
+    )
     assert data["data"]
     assert data["data"][0].get("loop_id") or data["data"][0].get("id")
+    assert data["evidence"] == data["participants"]
+
+
+def test_chat_company_details_returns_human_readable_entities() -> None:
+    response = client.post("/api/chat", json={"message": "which companies are involved", "selected_loop_id": "227"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] == "selected_loop_participants"
+    assert "organizations" in data["answer"].lower() or "entities" in data["answer"].lower()
+    assert "role:" in data["answer"].lower()
+    assert "{" not in data["answer"]
+    assert data["data"]
+    assert data["participants"]
+    assert data["selected_loop_id"] == "227"
 
 
 def test_chat_unsupported_has_no_fake_data_and_unsupported_verification() -> None:
