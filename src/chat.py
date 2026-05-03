@@ -168,6 +168,18 @@ def number(value: Any, digits: int = 1) -> str | None:
     return f"{n:,.{digits}f}"
 
 
+def ratio(value: Any) -> str | None:
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    if 0 <= n <= 1:
+        return f"{n * 100:,.1f}%"
+    if 1 < n <= 100:
+        return f"{n:,.1f}%"
+    return f"{n:,.2f} ratio indicator"
+
+
 def selected_loop_columns(m: dict[str, str | None]) -> list[str]:
     return [
         c
@@ -187,13 +199,86 @@ def selected_loop_columns(m: dict[str, str | None]) -> list[str]:
     ]
 
 
-def summarize_loop(row: dict[str, Any], prefix: str) -> str:
+def row_loop_id(row: dict[str, Any]) -> str | None:
+    value = display_value(row, "loop_id", "id", "cycle_id", "component_id")
+    return None if value is None else str(value)
+
+
+def entity_name(row: dict[str, Any]) -> str:
+    return str(display_value(row, "organization_name", "name", "legal_name", "charity_name", "account_name", "charity", "bn", "business_number", "entity_id") or "Unknown organization")
+
+
+def entity_role(row: dict[str, Any]) -> str:
+    sends_to = display_value(row, "sends_to", "target_name", "to_name")
+    receives_from = display_value(row, "receives_from", "source_name", "from_name")
+    position = display_value(row, "position_in_loop", "participant_role", "role")
+    if sends_to and receives_from:
+        return f"Sends to {sends_to} and receives from {receives_from}"
+    if sends_to:
+        return f"Sends to {sends_to}"
+    if receives_from:
+        return f"Receives from {receives_from}"
+    if position is not None:
+        return f"Participant position {position} in the circular path"
+    return "Participant in the circular path"
+
+
+def participant_rows_for_loop(row: dict[str, Any], ctx: dict[str, Any]) -> list[dict[str, Any]]:
+    loop_id = row_loop_id(row)
+    selected_id = ctx.get("selected_loop_id")
+    if loop_id and selected_id and str(loop_id) == str(selected_id):
+        people = ctx.get("selected_people") or []
+        if isinstance(people, list):
+            return [p for p in people if isinstance(p, dict)]
+    participants = row.get("participants")
+    if isinstance(participants, list):
+        return [p for p in participants if isinstance(p, dict)]
+    return []
+
+
+def build_entity_summary(rows: list[dict[str, Any]], limit: int = 6) -> str:
+    if not rows:
+        return ""
+    lines = [f"It involves {len(rows)} organizations or entities:"]
+    for index, row in enumerate(rows[:limit], start=1):
+        details = [f"{index}. {entity_name(row)}"]
+        bn = display_value(row, "bn", "BN", "charity_bn", "business_number", "registration_number", "entity_id")
+        if bn:
+            details.append(f"   Business/registration number: {bn}")
+        details.append(f"   Role: {entity_role(row)}")
+        sent = money(display_value(row, "total_sent", "sent_amount", "amount_sent"))
+        received = money(display_value(row, "total_received", "received_amount", "amount_received"))
+        govt = ratio(display_value(row, "max_govt_share_pct", "govt_share_pct", "loop_max_govt_share_pct", "score_govt_share_pct"))
+        overhead = ratio(display_value(row, "max_strict_overhead_pct", "strict_overhead_pct", "loop_max_strict_overhead_pct", "score_overhead_pct"))
+        location = ", ".join(str(v) for v in [display_value(row, "city"), display_value(row, "province")] if v)
+        category = display_value(row, "category", "designation", "status", "filing_status", "source_dataset")
+        if sent:
+            details.append(f"   Total sent: {sent}")
+        if received:
+            details.append(f"   Total received: {received}")
+        if govt:
+            details.append(f"   Government funding share: {govt}")
+        if overhead:
+            details.append(f"   Overhead indicator: {overhead}")
+        if location:
+            details.append(f"   Location: {location}")
+        if category:
+            details.append(f"   Available classification/status: {category}")
+        lines.extend(details)
+    if len(rows) > limit:
+        lines.append(f"...and {len(rows) - limit} more organizations or entities in the returned records.")
+    return "\n".join(lines)
+
+
+def summarize_loop(row: dict[str, Any], prefix: str, participants: list[dict[str, Any]] | None = None) -> str:
     loop_id = display_value(row, "loop_id", "id", "cycle_id", "component_id")
     score = number(display_value(row, "review_score", "score"))
     label = display_value(row, "review_label", "label")
     flow = money(display_value(row, "total_flow", "circular_flow", "score_total_flow", "total_flow_allyears", "total_flow_window"))
-    participants = display_value(row, "participant_count")
+    participant_count = display_value(row, "participant_count")
+    participant_rows = participants or []
     why = display_value(row, "why_flagged")
+    path = display_value(row, "path_display")
     parts = [prefix]
     if loop_id is not None:
         parts.append(f"loop {loop_id}")
@@ -203,14 +288,19 @@ def summarize_loop(row: dict[str, Any], prefix: str) -> str:
         parts.append(f"and a {label} review label")
     sentence = " ".join(parts).strip() + "."
     details: list[str] = []
-    if flow is not None and participants is not None:
-        details.append(f"It has a total circular flow of {flow} across {participants} participants.")
+    if flow is not None and participant_count is not None:
+        details.append(f"It has a total circular flow of {flow} across {participant_count} organizations or entities.")
     elif flow is not None:
         details.append(f"It has a total circular flow of {flow}.")
-    elif participants is not None:
-        details.append(f"It includes {participants} participants.")
+    elif participant_count is not None:
+        details.append(f"It includes {participant_count} organizations or entities.")
+    if path:
+        details.append(f"The circular path recorded for this loop is {path}.")
+    entity_section = build_entity_summary(participant_rows)
+    if entity_section:
+        details.append(entity_section)
     if why:
-        details.append(f"It is flagged because of {why}.")
+        details.append(f"This loop is worth human review because of {why}.")
     details.append("This does not prove wrongdoing; it only means the loop is worth human review.")
     return " ".join([sentence, *details])
 
@@ -238,13 +328,15 @@ def answer_top_loops(ctx: dict[str, Any]) -> dict[str, Any]:
     sql = f"SELECT {qcols(cols)} FROM {table} ORDER BY {qcol(m['score'])} DESC LIMIT 10"
     df = query(ctx, sql)
     row = records(df.head(1))[0] if not df.empty else {}
-    answer = summarize_loop(row, "The highest-priority loaded loop is") if row else "These are the top loaded loops ranked by deterministic review score."
+    people = participant_rows_for_loop(row, ctx) if row else []
+    answer = summarize_loop(row, "The highest-priority loaded loop is", people) if row else "These are the top loaded loops ranked by deterministic review score."
     return make_response(
         answer + (" The table includes the next highest-scoring loops for comparison." if len(df) > 1 else ""),
         "top_loops",
         df,
         {"type": "bar", "x": m.get("loop_id") or cols[0], "y": m["score"], "title": "Top 10 Loops by Review Score"},
         sql,
+        evidence=pd.DataFrame(people) if people else None,
         suggested_followups=loop_followups(),
     )
 
@@ -267,12 +359,14 @@ def answer_worst_loop(ctx: dict[str, Any]) -> dict[str, Any]:
     sql = f"SELECT {qcols(cols)} FROM {table} ORDER BY {qcol(m['score'])} DESC LIMIT 1"
     df = query(ctx, sql)
     row = records(df.head(1))[0] if not df.empty else {}
+    people = participant_rows_for_loop(row, ctx) if row else []
     return make_response(
-        summarize_loop(row, "The highest-priority loop in the loaded dataset is") if row else "I could not find a loop row in the loaded dataset.",
+        summarize_loop(row, "The highest-priority loop in the loaded dataset is", people) if row else "I could not find a loop row in the loaded dataset.",
         "worst_loop",
         df,
         {"type": "table", "title": "Highest-Priority Loop"},
         sql,
+        evidence=pd.DataFrame(people) if people else None,
         suggested_followups=loop_followups(),
     )
 
@@ -285,12 +379,14 @@ def answer_largest_flow(ctx: dict[str, Any]) -> dict[str, Any]:
     sql = f"SELECT {qcols(cols)} FROM {table} ORDER BY {qcol(m['flow'])} DESC LIMIT 1"
     df = query(ctx, sql)
     row = records(df.head(1))[0] if not df.empty else {}
+    people = participant_rows_for_loop(row, ctx) if row else []
     return make_response(
-        summarize_loop(row, "The loaded loop with the largest circular flow is") if row else "I could not find a loop with circular flow in the loaded data.",
+        summarize_loop(row, "The loaded loop with the largest circular flow is", people) if row else "I could not find a loop with circular flow in the loaded data.",
         "largest_flow",
         df,
         {"type": "table", "title": "Largest Circular Flow"},
         sql,
+        evidence=pd.DataFrame(people) if people else None,
         suggested_followups=loop_followups(),
     )
 
@@ -365,14 +461,15 @@ def answer_selected_loop_explanation(ctx: dict[str, Any]) -> dict[str, Any]:
     table, m = loop_meta(ctx["tables"])
     cols = selected_loop_columns(m)
     evidence = pd.DataFrame([{c: row.get(c) for c in cols}])
+    people = ctx.get("selected_people") or []
     method = f"Selected loop row from {table}; fields: {', '.join(cols)}"
     return make_response(
-        summarize_loop(row, "The current loop context is"),
+        summarize_loop(row, "The current loop context is", [p for p in people if isinstance(p, dict)]),
         "selected_loop_explanation",
         evidence,
         {"type": "table", "title": "Selected Loop Evidence"},
         method,
-        evidence=evidence,
+        evidence=pd.DataFrame(people) if people else evidence,
         suggested_followups=loop_followups(),
     )
 
@@ -381,13 +478,17 @@ def answer_selected_loop_participants(ctx: dict[str, Any]) -> dict[str, Any]:
     if selected_loop_missing(ctx):
         return friendly_missing("Please select a loop first, or choose an example loop.")
     df = pd.DataFrame(ctx.get("selected_people") or [])
+    people = records(df)
+    loop = ctx.get("selected_loop") if isinstance(ctx.get("selected_loop"), dict) else {}
+    loop_label = row_loop_id(loop) or str(ctx.get("selected_loop_id") or "selected")
     return make_response(
-        "These are participant records for the selected loop.",
+        f"Loop {loop_label} includes the following organizations or entities.\n\n{build_entity_summary(people) if people else 'No participant organization details were available in the loaded records.'}",
         "selected_loop_participants",
         df,
         {"type": "table", "title": "Selected Loop Participants"},
         "Participant rows filtered by the selected loop id.",
         evidence=df,
+        suggested_followups=loop_followups(),
     )
 
 
