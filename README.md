@@ -17,7 +17,6 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Frontend-Next.js-black?style=for-the-badge&logo=nextdotjs" alt="Next.js badge" />
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi" alt="FastAPI badge" />
   <img src="https://img.shields.io/badge/AI%20Hackathon-Agency%202026-blueviolet?style=for-the-badge" alt="Agency 2026 badge" />
   <img src="https://img.shields.io/badge/Status-Live-success?style=for-the-badge" alt="Live status badge" />
