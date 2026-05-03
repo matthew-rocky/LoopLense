@@ -75,7 +75,7 @@ def make_response(
         "data": records(df),
         "rows_used": records(df),
         "evidence": records(ev) if not ev.empty else records(df.head(20)),
-        "chart": chart or {"type": "table", "title": "Result"},
+        "chart": chart if chart is not None else ({"type": "table", "title": "Result"} if not df.empty else None),
         "sql": method,
         "error": None,
         **extra,
@@ -103,7 +103,7 @@ def add_verification(response: dict[str, Any], ctx: dict[str, Any]) -> dict[str,
 
 
 def friendly_missing(message: str) -> dict[str, Any]:
-    return make_response(message, "unsupported", pd.DataFrame([{"message": message}]), {"type": "table", "title": "Unavailable"})
+    return make_response(message, "unsupported", pd.DataFrame(), None, "", evidence=pd.DataFrame())
 
 
 def loop_meta(tables: dict[str, TableInfo]) -> tuple[str | None, dict[str, str | None]]:
@@ -116,7 +116,11 @@ def loop_meta(tables: dict[str, TableInfo]) -> tuple[str | None, dict[str, str |
         "label": find_col(cols, ["review_label"], ["label"]),
         "score": find_col(cols, ["review_score"], ["score"]),
         "flow": find_col(cols, ["total_flow", "score_total_flow", "total_flow_allyears", "total_flow_window"], ["flow"]),
+        "bottleneck": find_col(cols, ["bottleneck_amt", "score_bottleneck", "bottleneck_allyears", "bottleneck_window"], ["bottleneck"]),
+        "participants": find_col(cols, ["participant_count"], ["participants"]),
         "govt": find_col(cols, ["loop_max_govt_share_pct", "score_govt_share_pct", "max_govt_share_pct", "total_govt_all_years"], ["govt"]),
+        "overhead": find_col(cols, ["loop_max_strict_overhead_pct", "loop_max_broad_overhead_pct", "score_overhead_pct"], ["overhead"]),
+        "path": find_col(cols, ["path_display", "path_bns"], ["path"]),
         "why": find_col(cols, ["why_flagged"], ["why", "reason"]),
     }
 
@@ -140,6 +144,77 @@ def query(ctx: dict[str, Any], sql: str) -> pd.DataFrame:
     return df
 
 
+def display_value(row: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, "", "nan", "NaN"):
+            return value
+    return None
+
+
+def money(value: Any) -> str | None:
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    return f"${n:,.0f}"
+
+
+def number(value: Any, digits: int = 1) -> str | None:
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return None
+    return f"{n:,.{digits}f}"
+
+
+def selected_loop_columns(m: dict[str, str | None]) -> list[str]:
+    return [
+        c
+        for c in [
+            m.get("loop_id"),
+            m.get("score"),
+            m.get("label"),
+            m.get("flow"),
+            m.get("bottleneck"),
+            m.get("participants"),
+            m.get("govt"),
+            m.get("overhead"),
+            m.get("path"),
+            m.get("why"),
+        ]
+        if c
+    ]
+
+
+def summarize_loop(row: dict[str, Any], prefix: str) -> str:
+    loop_id = display_value(row, "loop_id", "id", "cycle_id", "component_id")
+    score = number(display_value(row, "review_score", "score"))
+    label = display_value(row, "review_label", "label")
+    flow = money(display_value(row, "total_flow", "circular_flow", "score_total_flow", "total_flow_allyears", "total_flow_window"))
+    participants = display_value(row, "participant_count")
+    why = display_value(row, "why_flagged")
+    parts = [prefix]
+    if loop_id is not None:
+        parts.append(f"loop {loop_id}")
+    if score is not None:
+        parts.append(f"with a review score of {score}")
+    if label is not None:
+        parts.append(f"and a {label} review label")
+    sentence = " ".join(parts).strip() + "."
+    details: list[str] = []
+    if flow is not None and participants is not None:
+        details.append(f"It has a total circular flow of {flow} across {participants} participants.")
+    elif flow is not None:
+        details.append(f"It has a total circular flow of {flow}.")
+    elif participants is not None:
+        details.append(f"It includes {participants} participants.")
+    if why:
+        details.append(f"It is flagged because of {why}.")
+    details.append("This does not prove wrongdoing; it only means the loop is worth human review.")
+    return " ".join([sentence, *details])
+
+
 def answer_label_distribution(ctx: dict[str, Any]) -> dict[str, Any]:
     table, m = loop_meta(ctx["tables"])
     if not table or not m.get("label"):
@@ -159,15 +234,46 @@ def answer_top_loops(ctx: dict[str, Any]) -> dict[str, Any]:
     table, m = loop_meta(ctx["tables"])
     if not table or not m.get("score"):
         return friendly_missing("I could not find a review score column in the loaded data, so I cannot rank loops by score.")
-    cols = [c for c in [m.get("loop_id"), m.get("label"), m.get("score"), m.get("flow"), m.get("why")] if c]
+    cols = selected_loop_columns(m)
     sql = f"SELECT {qcols(cols)} FROM {table} ORDER BY {qcol(m['score'])} DESC LIMIT 10"
     df = query(ctx, sql)
+    row = records(df.head(1))[0] if not df.empty else {}
+    answer = summarize_loop(row, "The highest-priority loaded loop is") if row else "These are the top loaded loops ranked by deterministic review score."
     return make_response(
-        "These are the top loaded loops by deterministic review score.",
+        answer + (" The table includes the next highest-scoring loops for comparison." if len(df) > 1 else ""),
         "top_loops",
         df,
         {"type": "bar", "x": m.get("loop_id") or cols[0], "y": m["score"], "title": "Top 10 Loops by Review Score"},
         sql,
+        suggested_followups=loop_followups(),
+    )
+
+
+def loop_followups() -> list[str]:
+    return [
+        "Why was this loop flagged?",
+        "Show the participants in this loop.",
+        "Show the network for this loop.",
+        "Generate a neutral memo for this loop.",
+        "Show the evidence rows.",
+    ]
+
+
+def answer_worst_loop(ctx: dict[str, Any]) -> dict[str, Any]:
+    table, m = loop_meta(ctx["tables"])
+    if not table or not m.get("score"):
+        return friendly_missing("I could not find a review score column in the loaded data, so I cannot identify the highest-priority loop.")
+    cols = selected_loop_columns(m)
+    sql = f"SELECT {qcols(cols)} FROM {table} ORDER BY {qcol(m['score'])} DESC LIMIT 1"
+    df = query(ctx, sql)
+    row = records(df.head(1))[0] if not df.empty else {}
+    return make_response(
+        summarize_loop(row, "The highest-priority loop in the loaded dataset is") if row else "I could not find a loop row in the loaded dataset.",
+        "worst_loop",
+        df,
+        {"type": "table", "title": "Highest-Priority Loop"},
+        sql,
+        suggested_followups=loop_followups(),
     )
 
 
@@ -175,15 +281,17 @@ def answer_largest_flow(ctx: dict[str, Any]) -> dict[str, Any]:
     table, m = loop_meta(ctx["tables"])
     if not table or not m.get("flow"):
         return friendly_missing("I could not find a circular flow column in the loaded data.")
-    cols = [c for c in [m.get("loop_id"), m.get("label"), m.get("score"), m.get("flow"), m.get("why")] if c]
+    cols = selected_loop_columns(m)
     sql = f"SELECT {qcols(cols)} FROM {table} ORDER BY {qcol(m['flow'])} DESC LIMIT 1"
     df = query(ctx, sql)
+    row = records(df.head(1))[0] if not df.empty else {}
     return make_response(
-        "This is the loop with the largest available circular flow value.",
+        summarize_loop(row, "The loaded loop with the largest circular flow is") if row else "I could not find a loop with circular flow in the loaded data.",
         "largest_flow",
         df,
         {"type": "table", "title": "Largest Circular Flow"},
         sql,
+        suggested_followups=loop_followups(),
     )
 
 
@@ -255,16 +363,17 @@ def answer_selected_loop_explanation(ctx: dict[str, Any]) -> dict[str, Any]:
         return friendly_missing("Please select a loop first, or choose an example loop.")
     row = ctx["selected_loop"]
     table, m = loop_meta(ctx["tables"])
-    cols = [c for c in [m.get("loop_id"), m.get("label"), m.get("score"), m.get("flow"), m.get("govt"), m.get("why")] if c]
+    cols = selected_loop_columns(m)
     evidence = pd.DataFrame([{c: row.get(c) for c in cols}])
     method = f"Selected loop row from {table}; fields: {', '.join(cols)}"
     return make_response(
-        "The selected loop was flagged by deterministic review-priority indicators available in the loaded records.",
+        summarize_loop(row, "The current loop context is"),
         "selected_loop_explanation",
         evidence,
         {"type": "table", "title": "Selected Loop Evidence"},
         method,
         evidence=evidence,
+        suggested_followups=loop_followups(),
     )
 
 
@@ -326,13 +435,27 @@ def answer_memo(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def route_intent(question: str) -> str:
     q = question.lower()
+    if any(
+        phrase in q
+        for phrase in [
+            "worst loop",
+            "loop is worst",
+            "riskiest loop",
+            "most concerning loop",
+            "highest risk loop",
+            "highest priority loop",
+            "most severe loop",
+            "top risk loop",
+        ]
+    ):
+        return "worst_loop"
     if any(w in q for w in ["memo", "review memo", "summarize this loop"]):
         return "memo"
     if any(w in q for w in ["network", "visualize", "graph"]):
         return "selected_loop_network"
     if any(w in q for w in ["participant", "who is involved", "list the charities", "entities in this loop"]):
         return "selected_loop_participants"
-    if any(w in q for w in ["why", "flagged", "high priority", "explain", "indicator", "evidence supports"]):
+    if any(w in q for w in ["why", "flagged", "high priority", "explain", "indicator", "evidence supports", "evidence rows"]):
         return "selected_loop_explanation"
     if any(w in q for w in ["government", "exposure", "funding share"]):
         return "government_exposure_by_label"
@@ -351,6 +474,7 @@ def route_intent(question: str) -> str:
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "label_distribution": answer_label_distribution,
+    "worst_loop": answer_worst_loop,
     "top_loops": answer_top_loops,
     "largest_flow": answer_largest_flow,
     "government_exposure_by_label": answer_government_exposure,

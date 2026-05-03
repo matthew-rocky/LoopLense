@@ -4,8 +4,9 @@ import { text } from "@/lib/format";
 
 function tone(status: string) {
   const low = status.toLowerCase();
-  if (low.includes("pass") || low.includes("support") || low.includes("verified")) return { icon: CheckCircle2, cls: "text-[var(--success)]" };
   if (low.includes("fail") || low.includes("mismatch") || low.includes("blocked")) return { icon: AlertTriangle, cls: "text-[var(--danger)]" };
+  if (low.includes("unsupported") || low.includes("warning") || low.includes("needs review") || low.includes("partial") || low.includes("not found")) return { icon: ShieldQuestion, cls: "text-[var(--warning)]" };
+  if (low.includes("pass") || low.includes("verified") || low.includes("supported")) return { icon: CheckCircle2, cls: "text-[var(--success)]" };
   return { icon: ShieldQuestion, cls: "text-[var(--warning)]" };
 }
 
@@ -13,15 +14,17 @@ export function VerificationCards({ verification }: { verification?: AnyRow | nu
   if (!verification) return null;
   const checks = Array.isArray(verification.checks) ? (verification.checks as AnyRow[]) : [];
   const status = text(verification.overall_status ?? verification.final_status ?? verification.status ?? "Needs review");
+  const ToneIcon = tone(status).icon;
   return (
-    <section className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase text-[var(--muted)]">Verification</div>
-          <h3 className="mt-1 text-lg font-semibold">{status}</h3>
-        </div>
-        <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">{text(verification.rows_used_count ?? 0)} rows checked</div>
-      </div>
+    <details className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold">
+          <ToneIcon size={17} className={tone(status).cls} />
+          Grounding checks: {status}
+        </span>
+        <span className="text-xs text-[var(--muted)]">Verification details</span>
+      </summary>
+      <div className="mt-3 rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)] w-fit">{text(verification.rows_used_count ?? 0)} rows checked</div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {checks.slice(0, 6).map((check, index) => {
           const statusText = text(check.status ?? "Needs review");
@@ -39,7 +42,7 @@ export function VerificationCards({ verification }: { verification?: AnyRow | nu
           );
         })}
       </div>
-    </section>
+    </details>
   );
 }
 

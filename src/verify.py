@@ -381,6 +381,8 @@ def build_verification_summary(checks: list[dict[str, Any]]) -> dict[str, Any]:
             if status == "passed"
             else "This answer is mostly grounded in the rows used, with some checks that need human review."
             if status == "mostly"
+            else "This request is unsupported by the current deterministic chat handlers."
+            if status == "unsupported"
             else "This answer needs human review because some claims could not be matched or raised warnings."
         ),
     }
@@ -388,6 +390,25 @@ def build_verification_summary(checks: list[dict[str, Any]]) -> dict[str, Any]:
 
 def verify_chat_answer(answer_text: str, rows_used: Any, data_context: dict[str, Any], intent: str) -> dict[str, Any]:
     row_list = _rows(rows_used)
+    if intent == "unsupported":
+        return {
+            "overall_status": "Unsupported",
+            "status": "unsupported",
+            "summary": "This request is unsupported by the current deterministic chat handlers.",
+            "rows_used_count": 0,
+            "source": "unsupported request",
+            "query_or_method_available": False,
+            "checks": [
+                _check(
+                    "Intent support",
+                    "unsupported",
+                    "Unsupported request",
+                    "chat router",
+                    "unsupported",
+                    "No deterministic LoopLens handler produced a grounded data answer for this request.",
+                )
+            ],
+        }
     selected = data_context.get("selected_loop") if isinstance(data_context, dict) else None
     people = data_context.get("selected_people") if isinstance(data_context, dict) else []
     edges = data_context.get("selected_edges") if isinstance(data_context, dict) else []

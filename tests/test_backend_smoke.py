@@ -79,6 +79,34 @@ def test_loop_search_matches_participant_name() -> None:
         assert any("VANCOUVER FOUNDATION" in row.get("participant_names", []) for row in rows)
 
 
+def test_chat_worst_loop_returns_grounded_loop() -> None:
+    response = client.post("/api/chat", json={"message": "what is the worst loop"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] in {"worst_loop", "top_loops"}
+    assert data["intent"] != "unsupported"
+    assert "loop" in data["answer"].lower() or "review score" in data["answer"].lower()
+    assert data["data"]
+    assert data["data"][0].get("loop_id") or data["data"][0].get("id")
+
+
+def test_chat_unsupported_has_no_fake_data_and_unsupported_verification() -> None:
+    response = client.post("/api/chat", json={"message": "write me a recipe for pancakes"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] == "unsupported"
+    assert data["data"] == []
+    assert data["verification"]["overall_status"] == "Unsupported"
+
+
+def test_route_intent_worst_loop_phrases() -> None:
+    from src.chat import route_intent
+
+    assert route_intent("what is the worst loop") == "worst_loop"
+    assert route_intent("riskiest loop") == "worst_loop"
+    assert route_intent("highest priority loop") == "worst_loop"
+
+
 def test_backend_imports_do_not_load_legacy_ui_modules() -> None:
     import sys
     import src.chat
