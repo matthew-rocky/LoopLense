@@ -343,11 +343,21 @@ def answer_top_loops(ctx: dict[str, Any]) -> dict[str, Any]:
 
 def loop_followups() -> list[str]:
     return [
+        "Show organization details",
         "Why was this loop flagged?",
-        "Show the participants in this loop.",
-        "Show the network for this loop.",
-        "Generate a neutral memo for this loop.",
-        "Show the evidence rows.",
+        "Show evidence rows",
+        "Generate neutral memo",
+        "Show network view",
+    ]
+
+
+def participant_followups() -> list[str]:
+    return [
+        "Show organization details",
+        "Why was this loop flagged?",
+        "Show evidence rows",
+        "Generate neutral memo",
+        "Show network view",
     ]
 
 
@@ -367,7 +377,7 @@ def answer_worst_loop(ctx: dict[str, Any]) -> dict[str, Any]:
         {"type": "table", "title": "Highest-Priority Loop"},
         sql,
         evidence=pd.DataFrame(people) if people else None,
-        suggested_followups=loop_followups(),
+        suggested_followups=participant_followups(),
     )
 
 
@@ -550,13 +560,29 @@ def route_intent(question: str) -> str:
         ]
     ):
         return "worst_loop"
-    if any(w in q for w in ["memo", "review memo", "summarize this loop"]):
+    if any(w in q for w in ["memo", "review memo", "summarize this loop", "generate neutral memo", "neutral memo"]):
         return "memo"
-    if any(w in q for w in ["network", "visualize", "graph"]):
+    if any(w in q for w in ["network", "visualize", "graph", "network view"]):
         return "selected_loop_network"
-    if any(w in q for w in ["participant", "who is involved", "list the charities", "entities in this loop"]):
+    if any(
+        w in q
+        for w in [
+            "participant",
+            "who is involved",
+            "which companies are involved",
+            "companies involved",
+            "organizations involved",
+            "entities involved",
+            "organization details",
+            "company details",
+            "show company details",
+            "show organization details",
+            "list the charities",
+            "entities in this loop",
+        ]
+    ):
         return "selected_loop_participants"
-    if any(w in q for w in ["why", "flagged", "high priority", "explain", "indicator", "evidence supports", "evidence rows"]):
+    if any(w in q for w in ["why", "flagged", "suspicious", "tell me about this loop", "about this loop", "high priority", "explain", "indicator", "evidence supports", "evidence rows"]):
         return "selected_loop_explanation"
     if any(w in q for w in ["government", "exposure", "funding share"]):
         return "government_exposure_by_label"
