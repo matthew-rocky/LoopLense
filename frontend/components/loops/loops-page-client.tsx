@@ -43,7 +43,7 @@ export function LoopsPageClient() {
       <header className="flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-[var(--accent)]">Loop explorer</p>
-          <h1 className="mt-2 text-4xl font-bold">Full-Screen Circular Pattern Table</h1>
+          <h1 className="mt-2 text-4xl font-bold">Circular Pattern Table</h1>
         </div>
         <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">Search by loop ID, organization name, account name, BN, label, score, or participant. Tables expand to the available monitor space.</p>
       </header>
