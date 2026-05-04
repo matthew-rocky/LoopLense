@@ -18,6 +18,7 @@
   --success: #0f766e;
   --danger: #b91c1c;
   --shadow: 0 22px 80px rgba(15, 23, 42, 0.13);
+  --network-grid: rgba(15, 118, 110, 0.16);
 }
 
 :root[data-theme="dark"] {
@@ -36,6 +37,7 @@
   --success: #34d399;
   --danger: #f87171;
   --shadow: 0 24px 90px rgba(0, 0, 0, 0.34);
+  --network-grid: rgba(45, 212, 191, 0.16);
 }
 
 * {
@@ -136,14 +138,390 @@ textarea {
   color: var(--foreground);
 }
 
+.network-page-shell > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.network-workspace {
+  box-shadow: var(--shadow);
+}
+
+.network-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.network-graph-shell {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 72%, transparent), color-mix(in srgb, var(--surface-muted) 82%, transparent)),
+    radial-gradient(circle at 24% 18%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 24rem),
+    radial-gradient(circle at 84% 80%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 28rem);
+  box-shadow: var(--shadow);
+}
+
+.network-graph-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--foreground) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(color-mix(in srgb, var(--foreground) 4%, transparent) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.75), transparent 78%);
+}
+
+.network-graph-shell .react-flow {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  z-index: 2 !important;
+  width: 100%;
+  height: 100%;
+  transition: width 260ms ease;
+}
+
+.network-react-flow {
+  flex: 1 1 auto;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.network-graph-shell .react-flow__renderer,
+.network-graph-shell .react-flow__viewport,
+.network-graph-shell .react-flow__nodes,
+.network-graph-shell .react-flow__node {
+  pointer-events: auto;
+}
+
+.network-graph-shell .react-flow__viewport-portal {
+  pointer-events: none;
+}
+
+.network-graph-shell.has-panel .react-flow {
+  width: calc(100% - min(430px, 34vw));
+}
+
+.network-graph-shell.has-panel .network-year-control {
+  left: calc((100% - min(430px, 34vw)) / 2);
+}
+
+.network-org-node {
+  --node-opacity: 1;
+  --node-transform: translateY(0) scale(1);
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--border) 78%, var(--accent) 22%);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 12rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-strong) 94%, var(--accent) 6%), color-mix(in srgb, var(--surface) 88%, transparent)),
+    var(--surface-strong);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12), inset 0 1px 0 color-mix(in srgb, white 28%, transparent);
+  color: var(--foreground);
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.network-org-node.is-visible {
+  pointer-events: auto;
+  animation: network-node-enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.network-org-node.is-hidden {
+  opacity: 0;
+  transform: translateY(10px) scale(0.9);
+}
+
+.network-node-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, white 18%, transparent), transparent 34%),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 36%, transparent) 0 3px, transparent 3px);
+  opacity: 0.7;
+}
+
+.network-org-node:hover,
+.network-org-node.is-highlighted {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  box-shadow: 0 20px 55px color-mix(in srgb, var(--accent) 20%, transparent), inset 0 1px 0 color-mix(in srgb, white 28%, transparent);
+  --node-transform: translateY(-2px) scale(1);
+}
+
+.network-org-node.is-cycle {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+}
+
+.network-org-node.is-source {
+  border-color: color-mix(in srgb, var(--accent) 76%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 24px 70px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.network-org-node.is-return {
+  border-color: color-mix(in srgb, var(--accent-2) 58%, var(--border));
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 12rem),
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-strong) 93%, var(--accent-2) 7%), color-mix(in srgb, var(--surface) 88%, transparent)),
+    var(--surface-strong);
+}
+
+.network-org-node.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent), 0 28px 80px color-mix(in srgb, var(--accent) 34%, transparent);
+  --node-transform: translateY(-4px) scale(1.015);
+}
+
+.network-org-node.is-trace-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent), 0 26px 70px color-mix(in srgb, var(--accent) 30%, transparent);
+  --node-transform: translateY(-3px) scale(1.012);
+}
+
+.network-org-node.is-muted {
+  --node-opacity: 0.32;
+  filter: saturate(0.62);
+}
+
+.network-node-badge {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-muted));
+  padding: 0.125rem 0.5rem;
+  color: var(--accent);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1rem;
+  white-space: nowrap;
+}
+
+.network-node-metric {
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--surface-muted) 86%, transparent);
+  padding: 0.375rem 0.5rem;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent);
+}
+
+.network-flow-edge {
+  --edge-opacity: 1;
+  opacity: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 180ms ease, stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
+}
+
+.network-flow-edge.is-visible {
+  animation: network-edge-draw 820ms cubic-bezier(0.22, 0.9, 0.22, 1) both;
+}
+
+.network-flow-edge.is-highlighted,
+.network-flow-edge.is-hovered {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 52%, transparent));
+}
+
+.network-flow-edge.is-selected {
+  filter: drop-shadow(0 0 11px color-mix(in srgb, var(--accent-2) 56%, transparent));
+}
+
+.network-flow-edge.is-closing {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent-2) 32%, transparent));
+}
+
+.network-flow-edge.is-active {
+  filter: drop-shadow(0 0 13px color-mix(in srgb, var(--accent) 60%, transparent));
+}
+
+.network-flow-edge.is-muted {
+  --edge-opacity: 0.2;
+  filter: saturate(0.55);
+}
+
+.network-flow-edge.is-hidden {
+  opacity: 0;
+}
+
+.network-flow-edge-trace {
+  pointer-events: none;
+  stroke: color-mix(in srgb, var(--accent) 76%, white 24%);
+  stroke-linecap: round;
+  stroke-dasharray: 0.16 0.84;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 64%, transparent));
+  animation: network-flow-trace 900ms ease-in-out infinite;
+}
+
+.network-flow-hit {
+  pointer-events: stroke;
+}
+
+.network-edge-label {
+  border-color: color-mix(in srgb, var(--border) 72%, var(--accent) 28%);
+  background: color-mix(in srgb, var(--surface-strong) 90%, transparent);
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.16);
+  color: var(--foreground);
+  transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease;
+}
+
+.network-edge-label.is-expanded {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.network-edge-label.is-closing {
+  border-color: color-mix(in srgb, var(--accent-2) 48%, var(--border));
+}
+
+.network-edge-label.is-muted {
+  opacity: 0.45;
+}
+
+.network-graph-controls,
+.network-year-control,
+.network-investigation-panel {
+  border-color: color-mix(in srgb, var(--border) 72%, var(--accent) 18%);
+  background: color-mix(in srgb, var(--surface-strong) 88%, transparent);
+  box-shadow: 0 22px 70px rgba(15, 23, 42, 0.18);
+  color: var(--foreground);
+}
+
+.network-graph-controls button,
+.network-year-button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+.network-graph-controls button:hover,
+.network-year-button:hover {
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface-muted));
+  color: var(--accent);
+}
+
+.network-graph-controls button:active,
+.network-year-button:active {
+  transform: translateY(1px);
+}
+
+.network-graph-controls button:disabled,
+.network-year-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.network-year-range {
+  accent-color: var(--accent);
+}
+
+.network-investigation-panel {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--surface-strong) 92%, transparent), color-mix(in srgb, var(--surface) 80%, transparent)),
+    color-mix(in srgb, var(--surface-strong) 86%, transparent);
+}
+
+.network-panel-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--foreground);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.network-panel-action:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-muted));
+  color: var(--accent);
+}
+
+.network-panel-action:disabled {
+  cursor: default;
+  color: var(--accent);
+  opacity: 0.74;
+}
+
 @keyframes dash {
   to {
     stroke-dashoffset: -28;
   }
 }
 
+@keyframes network-node-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.88);
+  }
+  to {
+    opacity: var(--node-opacity);
+    transform: var(--node-transform);
+  }
+}
+
+@keyframes network-edge-draw {
+  from {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+  to {
+    opacity: var(--edge-opacity);
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes network-flow-trace {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @media (max-width: 767px) {
   body::before {
     background-size: 34px 34px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .network-graph-shell.has-panel .react-flow {
+    width: 100%;
+  }
+
+  .network-graph-shell.has-panel .network-year-control {
+    left: 50%;
+  }
+}
+
+@media (max-width: 900px) {
+  .network-investigation-panel {
+    top: auto;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    width: auto;
+    max-height: min(46%, 25rem);
+  }
+
+  .network-graph-shell.has-panel .network-year-control {
+    bottom: calc(min(46%, 25rem) + 2rem);
   }
 }

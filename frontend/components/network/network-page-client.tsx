@@ -51,11 +51,11 @@ export function NetworkPageClient() {
   }
 
   return (
-    <PageShell className="h-[calc(100vh-2rem)]">
-      <header>
+    <PageShell className="network-page-shell flex h-[calc(100vh-2rem)] min-h-[720px] flex-col gap-4 overflow-hidden">
+      <header className="shrink-0">
         <p className="text-sm font-semibold uppercase tracking-wide text-[var(--accent)]">Network view</p>
-        <h1 className="mt-2 text-4xl font-bold">Interactive Transfer Graph</h1>
-        <p className="mt-3 text-[var(--muted)]">Nodes show organization names. BN, location, and evidence metadata remain available in hover context.</p>
+        <h1 className="mt-1 text-3xl font-bold md:text-4xl">Interactive Transfer Graph</h1>
+        <p className="mt-2 text-sm text-[var(--muted)] md:text-base">Nodes show organization names. BN, location, and evidence metadata remain available in hover context.</p>
       </header>
       {loading ? <EmptyState icon={Network} title="Loading network" description="Loading transfer graph data." /> : <NetworkWorkspace initialLoopId={initialLoopId} initialGraph={graph} loopOptions={loops} />}
     </PageShell>
